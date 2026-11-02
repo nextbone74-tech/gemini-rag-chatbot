@@ -206,18 +206,24 @@ def generate_answer(
     client = get_client()
 
     # Gemini Interactions API 공식 형식: tools / system_instruction / generation_config
-    request_args: dict[str, Any] = {
+    USE_FILE_SEARCH = (
+    os.getenv("USE_FILE_SEARCH", "true").lower() == "true"
+    )
+    
+    request_args = {
         "model": MODEL_NAME,
         "input": message,
-        "tools": [
+        "system_instruction": SYSTEM_INSTRUCTION,
+        "generation_config": {"thinking_level": THINKING_LEVEL},
+    }
+    
+    if USE_FILE_SEARCH:
+        request_args["tools"] = [
             {
                 "type": "file_search",
                 "file_search_store_names": [FILE_SEARCH_STORE_NAME],
             }
-        ],
-        "system_instruction": SYSTEM_INSTRUCTION,
-        "generation_config": {"thinking_level": THINKING_LEVEL},
-    }
+        ]
 
     # 이전 대화 ID가 있으면 Gemini 서버 측 대화 이력을 이어갑니다.
     if previous_interaction_id:
