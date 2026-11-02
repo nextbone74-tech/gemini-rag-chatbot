@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f5f6f8" />
+  <title>문서 도우미 | Gemini RAG</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --panel: #ffffff;
+      --sidebar: #f0f1f4;
+      --line: #e7e9ee;
+      --text: #20242c;
+      --muted: #8a909c;
+      --accent: #fee500;
+      --accent-dark: #d9c300;
+      --bot: #ffffff;
+      --user: #fee500;
+      --shadow: 0 8px 28px rgba(24, 31, 44, .055);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", "Malgun Gothic", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app { display: flex; min-height: 100dvh; height: 100dvh; overflow: hidden; }
+    .sidebar {
+      width: 256px; flex: 0 0 256px; padding: 22px 16px;
+      background: var(--sidebar); border-right: 1px solid var(--line);
+      display: flex; flex-direction: column; gap: 22px;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 2px 8px; }
+    .brand-mark {
+      width: 38px; height: 38px; border-radius: 13px; background: var(--accent);
+      display: grid; place-items: center; font-size: 19px; font-weight: 900;
+      box-shadow: 0 4px 12px rgba(217,195,0,.18);
+    }
+    .brand-name { font-size: 15px; font-weight: 800; letter-spacing: -.3px; }
+    .brand-sub { margin-top: 3px; font-size: 11px; color: var(--muted); }
+    .new-chat {
+      display: flex; align-items: center; justify-content: center; gap: 9px;
+      padding: 13px 14px; border: 1px solid #e5d300; border-radius: 13px;
+      background: var(--accent); color: #282500; font-weight: 750;
+      transition: transform .15s, filter .15s;
+    }
+    .new-chat:hover { filter: brightness(.98); transform: translateY(-1px); }
+    .side-label { padding: 0 9px; color: #9ba1ac; font-size: 10px; font-weight: 800; letter-spacing: 1px; }
+    .side-note {
+      margin-top: auto; border: 1px solid #e4e6eb; background: rgba(255,255,255,.66);
+      padding: 13px; border-radius: 14px; color: #777e8a; font-size: 11px; line-height: 1.65;
+    }
+    .side-note strong { display: block; color: #4e5561; font-size: 12px; margin-bottom: 4px; }
+    .sidebar-footer { display:flex; align-items:center; justify-content:space-between; padding: 0 5px; color:var(--muted); font-size:11px; }
+    .main { min-width: 0; flex: 1; display: flex; flex-direction: column; position: relative; }
+    .topbar {
+      height: 70px; flex: 0 0 70px; display:flex; align-items:center; justify-content:space-between;
+      padding: 0 28px; background: rgba(255,255,255,.88); border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(12px); z-index: 2;
+    }
+    .top-left { display:flex; align-items:center; gap: 12px; }
+    .top-title { font-size: 15px; font-weight: 800; }
+    .top-desc { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .top-actions { display:flex; align-items:center; gap: 10px; }
+    .status-pill { display:flex; align-items:center; gap:7px; border:1px solid var(--line); padding:7px 10px; border-radius:999px; color:#707784; font-size:11px; background:#fff; }
+    .status-dot { width:7px; height:7px; background:#22b573; border-radius:50%; box-shadow:0 0 0 3px rgba(34,181,115,.1); }
+    .icon-btn { display:grid; place-items:center; width:37px; height:37px; border:1px solid var(--line); background:#fff; border-radius:11px; color:#626a76; }
+    .icon-btn:hover { background:#f8f9fb; }
+    .menu-btn { display:none; }
+    .chat-area { flex:1; overflow-y:auto; scroll-behavior:smooth; padding: 28px 24px 18px; }
+    .chat-inner { width:100%; max-width: 900px; margin:0 auto; min-height:100%; display:flex; flex-direction:column; }
+    .welcome { margin:auto auto 36px; width:100%; text-align:center; padding:28px 10px 10px; }
+    .welcome-mark { margin:0 auto 19px; width:64px; height:64px; display:grid; place-items:center; border-radius:22px; background:var(--accent); font-size:28px; box-shadow:0 8px 22px rgba(217,195,0,.18); }
+    .welcome h1 { margin:0; font-size:27px; letter-spacing:-1.2px; line-height:1.35; }
+    .welcome p { margin:10px 0 25px; color:#858c98; font-size:13px; line-height:1.7; }
+    .suggestions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; max-width:660px; margin:0 auto; text-align:left; }
+    .suggestion {
+      border:1px solid var(--line); background:#fff; padding:14px 15px; border-radius:15px;
+      color:#4f5662; font-size:12px; line-height:1.55; text-align:left; box-shadow:0 3px 12px rgba(20,30,45,.025);
+    }
+    .suggestion:hover { border-color:#e6d500; background:#fffef4; }
+    .suggestion b { display:block; color:#242a33; font-size:12px; margin-bottom:4px; }
+    .messages { display:flex; flex-direction:column; gap:22px; padding: 5px 0 28px; }
+    .message-row { display:flex; gap:11px; align-items:flex-start; max-width:100%; }
+    .message-row.user { flex-direction:row-reverse; }
+    .avatar { width:32px; height:32px; flex:0 0 32px; border-radius:11px; display:grid; place-items:center; font-size:14px; font-weight:800; }
+    .avatar.bot { background:#252a33; color:#fff; }
+    .avatar.user { background:var(--accent); color:#373100; }
+    .message-content { max-width:min(78%, 710px); min-width:0; }
+    .message-name { font-size:10px; color:#a0a6b0; margin:0 2px 6px; }
+    .user .message-name { text-align:right; }
+    .bubble { padding:13px 16px; border-radius:4px 17px 17px 17px; background:var(--bot); border:1px solid #eceef2; box-shadow:var(--shadow); font-size:13px; line-height:1.75; overflow-wrap:anywhere; }
+    .user .bubble { background:var(--user); border-color:#f3df00; border-radius:17px 4px 17px 17px; color:#292500; box-shadow:0 5px 15px rgba(217,195,0,.10); white-space:pre-wrap; }
+    .bubble p { margin:0 0 9px; }
+    .bubble p:last-child { margin-bottom:0; }
+    .bubble h1,.bubble h2,.bubble h3 { line-height:1.45; margin:13px 0 7px; font-size:15px; }
+    .bubble h1:first-child,.bubble h2:first-child,.bubble h3:first-child { margin-top:0; }
+    .bubble ul,.bubble ol { margin:7px 0 10px; padding-left:22px; }
+    .bubble li { margin:3px 0; }
+    .bubble blockquote { margin:10px 0; padding:7px 12px; border-left:3px solid #e3d100; color:#626a76; background:#fffdf0; }
+    .bubble table { border-collapse:collapse; width:100%; margin:10px 0; font-size:12px; display:block; overflow-x:auto; }
+    .bubble th,.bubble td { border:1px solid #e6e8ed; padding:7px 9px; text-align:left; }
+    .bubble th { background:#f7f8fa; }
+    .bubble pre { white-space:pre-wrap; overflow-x:auto; padding:11px; background:#242a33; color:#f7f7f7; border-radius:10px; font-size:11px; }
+    .bubble code { background:#f1f2f5; padding:2px 4px; border-radius:4px; font-size:.92em; }
+    .bubble pre code { background:transparent; padding:0; }
+    .message-meta { margin:6px 3px 0; color:#a0a6b0; font-size:10px; }
+    .user .message-meta { text-align:right; }
+    .typing { display:flex; align-items:center; gap:5px; padding:5px 2px; height:20px; }
+    .typing i { width:6px; height:6px; border-radius:50%; background:#a6acb5; animation:bounce 1.1s infinite ease-in-out; }
+    .typing i:nth-child(2) { animation-delay:.15s; }
+    .typing i:nth-child(3) { animation-delay:.3s; }
+    @keyframes bounce { 0%,60%,100% { transform:translateY(0); opacity:.45; } 30% { transform:translateY(-5px); opacity:1; } }
+    .sources { margin-top:10px; border-top:1px solid #eef0f3; padding-top:9px; }
+    .sources summary { cursor:pointer; color:#727986; font-size:11px; font-weight:700; list-style:none; }
+    .sources summary::-webkit-details-marker { display:none; }
+    .sources summary::before { content:"↳"; margin-right:7px; color:#c2a900; }
+    .source-list { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .source-chip { display:inline-flex; align-items:center; gap:5px; padding:5px 8px; background:#f5f6f8; border:1px solid #e9ebef; border-radius:8px; color:#626a76; font-size:10px; }
+    .composer-wrap { flex:0 0 auto; padding: 14px 24px 20px; background:linear-gradient(180deg,rgba(245,246,248,0),var(--bg) 22%); }
+    .composer-inner { max-width:900px; margin:0 auto; }
+    .composer {
+      display:flex; align-items:flex-end; gap:10px; background:#fff; padding:10px 11px 10px 17px;
+      border:1px solid #e2e5eb; border-radius:19px; box-shadow:0 8px 25px rgba(24,31,44,.07);
+      transition:border-color .15s, box-shadow .15s;
+    }
+    .composer:focus-within { border-color:#e4d200; box-shadow:0 8px 25px rgba(217,195,0,.11); }
+    #messageInput { resize:none; flex:1; min-height:27px; max-height:150px; border:0; outline:0; color:var(--text); font-size:13px; line-height:1.6; padding:3px 0; background:transparent; }
+    #messageInput::placeholder { color:#a8adb6; }
+    .send-btn { width:39px; height:39px; flex:0 0 39px; border:0; border-radius:13px; background:var(--accent); color:#302b00; display:grid; place-items:center; font-size:18px; font-weight:900; transition:transform .15s,opacity .15s; }
+    .send-btn:hover { transform:translateY(-1px); }
+    .send-btn:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+    .composer-help { text-align:center; color:#a0a6b0; font-size:10px; margin-top:9px; }
+    .toast { position:fixed; left:50%; bottom:105px; transform:translate(-50%,12px); opacity:0; pointer-events:none; z-index:20; background:#272c35; color:#fff; padding:10px 14px; border-radius:10px; font-size:12px; box-shadow:0 8px 24px #0002; transition:all .2s; max-width:90vw; }
+    .toast.show { opacity:1; transform:translate(-50%,0); }
+    .modal-backdrop { position:fixed; inset:0; display:none; place-items:center; background:rgba(24,29,38,.35); z-index:30; padding:18px; }
+    .modal-backdrop.open { display:grid; }
+    .modal { width:min(440px,100%); background:#fff; border-radius:18px; padding:22px; box-shadow:0 20px 70px #0002; }
+    .modal h2 { font-size:17px; margin:0 0 7px; }
+    .modal p { font-size:11px; color:#858c98; line-height:1.6; margin:0 0 18px; }
+    .field { margin:13px 0; }
+    .field label { display:block; font-size:11px; font-weight:750; margin-bottom:7px; color:#515966; }
+    .field input { width:100%; padding:11px 12px; border:1px solid #e3e6ec; border-radius:10px; outline:none; font-size:12px; }
+    .field input:focus { border-color:#d8c600; }
+    .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+    .secondary-btn,.primary-btn { padding:10px 14px; border-radius:10px; border:1px solid #e2e5eb; font-size:11px; font-weight:750; }
+    .secondary-btn { background:white; color:#68707c; }
+    .primary-btn { background:var(--accent); border-color:#e5d400; color:#302b00; }
+    .mobile-overlay { display:none; }
+    @media (max-width:760px) {
+      .sidebar { position:fixed; top:0; bottom:0; left:0; z-index:15; transform:translateX(-105%); transition:transform .2s; box-shadow:12px 0 35px #0001; }
+      .sidebar.open { transform:translateX(0); }
+      .mobile-overlay.show { display:block; position:fixed; inset:0; background:#15192355; z-index:14; }
+      .menu-btn { display:grid; }
+      .topbar { height:62px; flex-basis:62px; padding:0 14px; }
+      .top-desc { display:none; }
+      .status-pill { font-size:10px; padding:6px 8px; }
+      .chat-area { padding:15px 12px 10px; }
+      .welcome { padding-top:25px; margin-bottom:20px; }
+      .welcome h1 { font-size:22px; }
+      .welcome p { font-size:12px; }
+      .suggestions { grid-template-columns:1fr; max-width:430px; }
+      .suggestion { padding:11px 13px; }
+      .messages { gap:17px; }
+      .message-content { max-width:calc(100% - 44px); }
+      .bubble { padding:11px 13px; font-size:12px; }
+      .composer-wrap { padding:8px 10px calc(10px + env(safe-area-inset-bottom)); }
+      .composer { border-radius:16px; padding:8px 9px 8px 13px; }
+      .composer-help { font-size:9px; }
+    }
+    @media (max-width:390px) { .status-pill { display:none; } .avatar { width:28px; height:28px; flex-basis:28px; } }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">문</div>
+      <div><div class="brand-name">문서 도우미</div><div class="brand-sub">Gemini File Search RAG</div></div>
+    </div>
+    <button class="new-chat" id="newChatBtn" type="button"><span>＋</span> 새 대화 시작</button>
+    <div class="side-label">SERVICE</div>
+    <div class="side-note">
+      <strong>문서 기반 AI 답변</strong>
+      등록된 마크다운 문서를 검색한 뒤 답변합니다. 답변 아래의 출처를 열어 근거 문서를 확인하세요.
+    </div>
+    <div class="sidebar-footer"><span>Gemini 3.8 Flash</span><span>v1.0</span></div>
+  </aside>
+  <div class="mobile-overlay" id="mobileOverlay"></div>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="top-left">
+        <button class="icon-btn menu-btn" id="menuBtn" aria-label="메뉴 열기" type="button">☰</button>
+        <div><div class="top-title">문서 질의응답</div><div class="top-desc">업로드한 문서에서 근거를 찾아 답변합니다.</div></div>
+      </div>
+      <div class="top-actions">
+        <div class="status-pill"><span class="status-dot"></span><span>AI 연결 준비</span></div>
+        <button class="icon-btn" id="settingsBtn" title="연결 설정" aria-label="연결 설정" type="button">⚙</button>
+      </div>
+    </header>
+
+    <section class="chat-area" id="chatArea">
+      <div class="chat-inner">
+        <section class="welcome" id="welcome">
+          <div class="welcome-mark">✦</div>
+          <h1>무엇이 궁금하신가요?</h1>
+          <p>등록된 마크다운 문서를 검색해 답변합니다.<br>문서에 없는 내용은 확인되지 않는다고 안내합니다.</p>
+          <div class="suggestions">
+            <button class="suggestion" type="button" data-question="업로드된 문서의 주요 내용을 핵심만 요약해줘."><b>문서 핵심 요약</b>업로드된 문서의 주요 내용을 정리해줘.</button>
+            <button class="suggestion" type="button" data-question="이 주제와 관련된 근거 문서와 핵심 내용을 찾아줘."><b>근거 문서 찾기</b>질문과 관련된 자료와 근거를 찾아줘.</button>
+            <button class="suggestion" type="button" data-question="문서에 나온 절차를 순서대로 설명해줘."><b>절차 단계별 설명</b>문서에 나온 업무 절차를 설명해줘.</button>
+            <button class="suggestion" type="button" data-question="관련 내용들을 표로 비교해줘."><b>내용 비교하기</b>관련 기준이나 내용을 표로 비교해줘.</button>
+          </div>
+        </section>
+        <div class="messages" id="messages" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <footer class="composer-wrap">
+      <div class="composer-inner">
+        <form class="composer" id="chatForm">
+          <textarea id="messageInput" rows="1" maxlength="8000" placeholder="문서에 관해 궁금한 내용을 입력하세요..." aria-label="질문 입력"></textarea>
+          <button class="send-btn" id="sendBtn" type="submit" aria-label="전송">↑</button>
+        </form>
+        <div class="composer-help">Enter 전송 · Shift + Enter 줄바꿈 · 답변은 업로드된 문서의 내용에 따라 달라질 수 있습니다.</div>
+      </div>
+    </footer>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="modal-backdrop" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="modal">
+    <h2 id="settingsTitle">연결 설정</h2>
+    <p>Render에 배포한 백엔드 주소를 입력하세요. API 키는 이 화면이나 GitHub에 입력하지 않습니다.</p>
+    <div class="field"><label for="apiUrl">백엔드 주소</label><input id="apiUrl" type="url" placeholder="https://your-service.onrender.com"></div>
+    <div class="field"><label for="chatPassword">접속 암호 (선택)</label><input id="chatPassword" type="password" placeholder="관리자가 설정한 암호"></div>
+    <div class="modal-actions">
+      <button class="secondary-btn" id="closeSettings" type="button">취소</button>
+      <button class="primary-btn" id="saveSettings" type="button">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // Render 배포 후 주소를 이 값에 입력하거나, 화면 우측 상단 설정에서 저장합니다.
+  const DEFAULT_API_BASE = "https://YOUR-RENDER-SERVICE.onrender.com";
+  const API_BASE_KEY = "gemini_rag_api_base";
+  const PASSWORD_KEY = "gemini_rag_chat_password";
+  const INTERACTION_KEY = "gemini_rag_previous_interaction";
+
+  const $ = (id) => document.getElementById(id);
+  const messages = $("messages");
+  const chatArea = $("chatArea");
+  const input = $("messageInput");
+  const sendBtn = $("sendBtn");
+  const welcome = $("welcome");
+  const settingsModal = $("settingsModal");
+  let sending = false;
+  let toastTimer = null;
+
+  function apiBase() {
+    return (localStorage.getItem(API_BASE_KEY) || DEFAULT_API_BASE).trim().replace(/\/+$/, "");
+  }
+
+  function showToast(message) {
+    const toast = $("toast");
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 3000);
+  }
+
+  function scrollToBottom() {
+    requestAnimationFrame(() => { chatArea.scrollTop = chatArea.scrollHeight; });
+  }
+
+  function safeMarkdown(text) {
+    if (window.marked && window.DOMPurify) {
+      const html = window.marked.parse(text, { breaks: true, gfm: true });
+      return window.DOMPurify.sanitize(html);
+    }
+    const escaped = text.replace(/[&<>"']/g, (ch) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+    return `<p>${escaped.replace(/\n/g, "<br>")}</p>`;
+  }
+
+  function createMessage(role, text, options = {}) {
+    const row = document.createElement("div");
+    row.className = `message-row ${role}`;
+    const avatar = document.createElement("div");
+    avatar.className = `avatar ${role === "user" ? "user" : "bot"}`;
+    avatar.textContent = role === "user" ? "나" : "문";
+
+    const content = document.createElement("div");
+    content.className = "message-content";
+    const name = document.createElement("div");
+    name.className = "message-name";
+    name.textContent = role === "user" ? "나" : "문서 도우미";
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    if (options.loading) {
+      bubble.innerHTML = '<div class="typing" aria-label="답변 작성 중"><i></i><i></i><i></i></div>';
+    } else if (role === "user") {
+      bubble.textContent = text;
+    } else {
+      bubble.innerHTML = safeMarkdown(text);
+    }
+    content.append(name, bubble);
+    if (!options.loading) {
+      const meta = document.createElement("div");
+      meta.className = "message-meta";
+      meta.textContent = new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+      content.append(meta);
+    }
+    row.append(avatar, content);
+    messages.append(row);
+    scrollToBottom();
+    return { row, bubble, content };
+  }
+
+  function addSources(container, sources) {
+    if (!Array.isArray(sources) || sources.length === 0) return;
+    const details = document.createElement("details");
+    details.className = "sources";
+    const summary = document.createElement("summary");
+    summary.textContent = `참고한 문서 ${sources.length}건`;
+    const list = document.createElement("div");
+    list.className = "source-list";
+    sources.forEach((source) => {
+      const chip = document.createElement("span");
+      chip.className = "source-chip";
+      let label = (source.file_name || "참고 문서").replace(/^RAGDOC::/, "");
+      if (source.page_number !== undefined && source.page_number !== null) label += ` · ${source.page_number}쪽`;
+      chip.textContent = `▤ ${label}`;
+      if (source.excerpt) chip.title = source.excerpt;
+      list.append(chip);
+    });
+    details.append(summary, list);
+    container.append(details);
+  }
+
+  async function askForPassword() {
+    const existing = sessionStorage.getItem(PASSWORD_KEY) || "";
+    const entered = window.prompt("이 챗봇의 접속 암호를 입력하세요.", existing);
+    if (entered === null) return null;
+    sessionStorage.setItem(PASSWORD_KEY, entered);
+    return entered;
+  }
+
+  async function sendMessage(question) {
+    const text = (question ?? input.value).trim();
+    if (!text || sending) return;
+    if (apiBase().includes("YOUR-RENDER-SERVICE")) {
+      showToast("먼저 설정(⚙)에서 Render 백엔드 주소를 입력하세요.");
+      $("settingsBtn").click();
+      return;
+    }
+
+    sending = true;
+    sendBtn.disabled = true;
+    welcome.style.display = "none";
+    createMessage("user", text);
+    input.value = "";
+    resizeInput();
+    const pending = createMessage("bot", "", { loading: true });
+
+    const payload = {
+      message: text,
+      previous_interaction_id: sessionStorage.getItem(INTERACTION_KEY) || null
+    };
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 180000);
+      const headers = { "Content-Type": "application/json" };
+      const password = sessionStorage.getItem(PASSWORD_KEY);
+      if (password) headers["X-Chat-Password"] = password;
+
+      let response;
+      try {
+        response = await fetch(`${apiBase()}/chat`, {
+          method: "POST", headers, body: JSON.stringify(payload), signal: controller.signal
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      let data = {};
+      try { data = await response.json(); } catch (_) { data = {}; }
+
+      if (response.status === 401) {
+        sessionStorage.removeItem(PASSWORD_KEY);
+        const newPassword = await askForPassword();
+        if (newPassword === null) throw new Error("접속 암호 입력이 취소되었습니다.");
+        headers["X-Chat-Password"] = newPassword;
+        response = await fetch(`${apiBase()}/chat`, {
+          method: "POST", headers, body: JSON.stringify(payload)
+        });
+        try { data = await response.json(); } catch (_) { data = {}; }
+      }
+
+      if (!response.ok) {
+        const detail = data.detail || data.error || `HTTP ${response.status}`;
+        throw new Error(detail);
+      }
+      if (data.interaction_id) sessionStorage.setItem(INTERACTION_KEY, data.interaction_id);
+      pending.bubble.innerHTML = safeMarkdown(data.reply || "답변을 받지 못했습니다.");
+      const meta = document.createElement("div");
+      meta.className = "message-meta";
+      meta.textContent = `${data.model || "Gemini"} · ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`;
+      pending.content.append(meta);
+      addSources(pending.content, data.sources);
+    } catch (error) {
+      let message = error.message || "알 수 없는 오류가 발생했습니다.";
+      if (error.name === "AbortError") message = "응답 시간이 초과되었습니다. 서버가 깨어나는 중이거나 요청이 오래 걸릴 수 있습니다. 잠시 후 다시 시도해 주세요.";
+      else if (message.includes("Failed to fetch")) message = "백엔드에 연결하지 못했습니다. 백엔드 주소, Render 상태 및 CORS 설정을 확인하세요.";
+      pending.bubble.textContent = `요청을 처리하지 못했습니다.\n${message}`;
+      showToast("응답을 가져오지 못했습니다.");
+    } finally {
+      sending = false;
+      sendBtn.disabled = false;
+      input.focus();
+      scrollToBottom();
+    }
+  }
+
+  function resizeInput() {
+    input.style.height = "auto";
+    input.style.height = `${Math.min(input.scrollHeight, 150)}px`;
+  }
+
+  function newChat() {
+    sessionStorage.removeItem(INTERACTION_KEY);
+    messages.replaceChildren();
+    welcome.style.display = "block";
+    input.value = "";
+    resizeInput();
+    input.focus();
+    closeSidebar();
+    showToast("새 대화를 시작합니다.");
+  }
+
+  function openSettings() {
+    $("apiUrl").value = localStorage.getItem(API_BASE_KEY) || (DEFAULT_API_BASE.includes("YOUR-RENDER-SERVICE") ? "" : DEFAULT_API_BASE);
+    $("chatPassword").value = sessionStorage.getItem(PASSWORD_KEY) || "";
+    settingsModal.classList.add("open");
+  }
+  function closeSettings() { settingsModal.classList.remove("open"); }
+
+  function closeSidebar() {
+    $("sidebar").classList.remove("open");
+    $("mobileOverlay").classList.remove("show");
+  }
+
+  $("chatForm").addEventListener("submit", (event) => { event.preventDefault(); sendMessage(); });
+  input.addEventListener("input", resizeInput);
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+      event.preventDefault(); sendMessage();
+    }
+  });
+  document.querySelectorAll(".suggestion").forEach((button) => {
+    button.addEventListener("click", () => sendMessage(button.dataset.question || ""));
+  });
+  $("newChatBtn").addEventListener("click", newChat);
+  $("settingsBtn").addEventListener("click", openSettings);
+  $("closeSettings").addEventListener("click", closeSettings);
+  $("saveSettings").addEventListener("click", () => {
+    const url = $("apiUrl").value.trim().replace(/\/+$/, "");
+    const validHttps = /^https:\/\//i.test(url);
+    const validLocalHttp = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(url);
+    if (!validHttps && !validLocalHttp) { showToast("https:// 주소 또는 localhost 테스트 주소를 입력하세요."); return; }
+    localStorage.setItem(API_BASE_KEY, url);
+    const password = $("chatPassword").value;
+    if (password) sessionStorage.setItem(PASSWORD_KEY, password);
+    else sessionStorage.removeItem(PASSWORD_KEY);
+    closeSettings();
+    showToast("연결 설정을 저장했습니다.");
+  });
+  settingsModal.addEventListener("click", (event) => { if (event.target === settingsModal) closeSettings(); });
+  $("menuBtn").addEventListener("click", () => {
+    $("sidebar").classList.add("open");
+    $("mobileOverlay").classList.add("show");
+  });
+  $("mobileOverlay").addEventListener("click", closeSidebar);
+
+  // Do not silently continue a server-side conversation after a page reload: the visible transcript is not persisted.
+  sessionStorage.removeItem(INTERACTION_KEY);
+
+  // On first load, allow the configured Render URL in source code to be used directly.
+  if (!localStorage.getItem(API_BASE_KEY) && !DEFAULT_API_BASE.includes("YOUR-RENDER-SERVICE")) {
+    localStorage.setItem(API_BASE_KEY, DEFAULT_API_BASE);
+  }
+})();
+</script>
+</body>
+</html>
